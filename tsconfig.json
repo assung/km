@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -12,12 +16,16 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./apps/*/src/*"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["apps/*/src", "packages/*/src", "scripts"],
-  "exclude": ["node_modules", "dist", "storybook-static"]
+  "include": [
+    "apps/*/src",
+    "packages/*/src",
+    "scripts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "storybook-static"
+  ]
 }
