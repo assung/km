@@ -73,9 +73,23 @@ Then plugin auto-enables (`.claude/settings.json` `defaultMode: "auto"`). You ge
 - Import only from public surface: `@qijenchen/design-system` top barrel,`@qijenchen/design-system/styles/tokens`,`@qijenchen/design-system/hooks/<name>`
 - Run `npm run lint:imports` before commit to catch internal-path leaks
 
-## CI secrets needed
+## CI secrets needed(fork-and-go painless setup)
 
-See `docs/01-first-time-setup.md`(Phase 6 onboarding doc — write me next).
+Per user 2026-05-26 directive「fork product workspace 註冊 netlify 即能達到一樣效果」。
+Fork 後 GitHub repo Settings → Secrets → Actions 加 3 個 secrets:
+
+| Secret | 用途 | 取得方式 |
+|---|---|---|
+| `NETLIFY_AUTH_TOKEN` | 共用 auth(兩個 site 都用)| Netlify → User settings → Applications → Personal access tokens |
+| `NETLIFY_SITE_ID_TEMPLATE` | Deploy `_template` 真實 product app | 新建 Netlify site → Site overview → Site ID |
+| `NETLIFY_SITE_ID_STORYBOOK` | Deploy Storybook(PM/designer/QA demo)| 新建第 2 個 Netlify site → Site ID |
+
+設完後:
+- `.github/workflows/deploy.yml` push main → deploy `apps/_template/dist` → app site
+- `.github/workflows/deploy-storybook.yml` push main → deploy `storybook-static` → storybook site
+- 兩個 site 跟著 main 自動 sync,fork-and-go 真的 painless
+
+完整 step-by-step 詳 `docs/01-first-time-setup.md`。
 
 ## License
 
