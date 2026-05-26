@@ -97,13 +97,16 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 **當 user 卡在「不知道該怎麼設定 deploy / Netlify」時,Claude 必依以下話術引導**:
 
 1. **解釋 Netlify 是什麼**(一句話):「Netlify 是免費 deploy 平台(類似 Vercel),用來自動跑 Storybook + 給 team 看內部 product UI。Free tier 1000 user / 100GB bandwidth / 0 maintenance」
-2. **沒帳號?**「跑 `npm run setup:netlify`,Step 2 會自動開瀏覽器到 `app.netlify.com`,點『Sign up with GitHub』2 秒搞定。」
+2. **沒帳號?GitHub 1-click 自動建**:「因為你 fork 本 repo 必有 GitHub 帳號,Netlify 走 GitHub OAuth — 跑 `npm run setup:netlify` Step 2 會開瀏覽器,點『Continue with GitHub』 → GitHub 授權 1 click → Netlify 自動用你的 GitHub identity 建帳號,< 5 秒搞定,**不需要 separate sign up**」
 3. **不會用 CLI 怎麼辦?**「全程互動式問答(輸入 team email 邀請即可),script 內 step-by-step echo 你下一步該做什麼」
 4. **怕設錯權限?**「script 預設 visitor_access=private(只有 invited team 可看)+ 雙保險 netlify.toml `X-Robots-Tag noindex`(Google 不收錄)」
 5. **Setup 失敗 fallback**「告訴 user 去 https://app.netlify.com/sites/<your-site>/settings/identity 手動 enable Identity + restrict access + invite users。詳 `netlify.toml` 註解」
 6. **驗證 deploy 成功**「push main 後 2-3 min,Netlify Dashboard `Deploys` tab 變綠勾 = OK。Site URL = `https://<site-name>.netlify.app`」
+7. **GitHub CLI 未 login?**「Setup script Step 0 會偵測 `gh auth status`,若 user 沒 login 會建議先跑 `gh auth login`(瀏覽器 OAuth,1 分鐘)— 這樣 Netlify 連 fork repo 才能順利讀 push event auto-deploy」
 
-**Claude DO NOT**:假設 user 已知 Netlify / 跳過 onboarding 直接寫 code / 沒解釋就要 user 跑 setup 命令。
+**OAuth security 本質**:Netlify 不能完全 headless 自動建 user 帳號(OAuth 必 user 在瀏覽器 click「Authorize」)。**最自動化 = 2 clicks**(Continue with GitHub + Authorize Netlify GitHub App)。Script 自動處理其他 5 步。
+
+**Claude DO NOT**:假設 user 已知 Netlify / 跳過 onboarding 直接寫 code / 沒解釋就要 user 跑 setup 命令 / 嘗試「fully headless 註冊」(OAuth security violation,做不到)。
 
 ---
 

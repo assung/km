@@ -35,10 +35,28 @@ function shOut(cmd) {
 
 console.log('🔒 Netlify access control setup(per user fork-and-go directive)')
 console.log('')
-console.log('━━━ 沒 Netlify 帳號?━━━')
+console.log('━━━ 沒 Netlify 帳號?GitHub 1-click 自動建 ━━━')
 console.log('Netlify = 免費 deploy platform(類似 Vercel)。我們用它跑 Storybook + 內部 team-only access。')
-console.log('沒帳號?Step 2「netlify login」會自動開瀏覽器到 app.netlify.com,點「Sign up with GitHub」即可。')
-console.log('Netlify Free tier:免費 1000 user invite / 100GB bandwidth / 無 maintenance。')
+console.log('Free tier:1000 user invite / 100GB bandwidth / 0 maintenance。')
+console.log('')
+console.log('因為 fork 本 repo 必先有 GitHub 帳號,Netlify 註冊走 GitHub OAuth ——')
+console.log('Step 2「netlify login」會開瀏覽器到 app.netlify.com → 點「Continue with GitHub」')
+console.log('→ GitHub 授權 1 click → Netlify 自動用你的 GitHub identity 建帳號(< 5 秒)。')
+console.log('已有 Netlify 帳號?同按鈕直接 login,無重複註冊。')
+console.log('')
+
+// Step 0: gh CLI pre-check(2026-05-26 enhancement per user verbatim「user 一定有 GitHub 帳號」)
+const ghOut = shOut('gh auth status 2>&1')
+if (ghOut.includes('Logged in')) {
+  const userMatch = ghOut.match(/account\s+(\S+)/)
+  const ghUser = userMatch ? userMatch[1] : '(unknown)'
+  console.log(`✓ GitHub CLI 已 login(account: ${ghUser})→ Step 2 直接點「Continue with GitHub」`)
+} else {
+  console.log('⚠️ GitHub CLI 未 login(可能影響後續 Netlify 連 fork repo 流程)')
+  console.log('  建議先跑:gh auth login(瀏覽器 OAuth,1 分鐘搞定)')
+  const proceed = await rl.question('  繼續 setup?(y/N)> ')
+  if (!/^y/i.test(proceed)) { console.log('Aborted by user'); rl.close(); process.exit(1) }
+}
 console.log('')
 
 // Step 1: Netlify CLI
