@@ -76,10 +76,21 @@ if (!whoami.includes('"User"') && !whoami.includes('"name"')) {
 console.log('✓ Netlify logged in')
 console.log('')
 
-// Step 3: Link site
+// Step 3: Link site(2026-05-26 auto-create per user verbatim「目前每個斷點都無法自動處理?」)
 if (!existsSync('.netlify/state.json')) {
-  console.log('▶ Link this repo to a Netlify site(creates new or links existing)...')
-  sh('netlify init')
+  // Default: 自動 create new site with predictable name from package.json + GitHub user
+  const repoName = JSON.parse(readFileSync('package.json', 'utf8')).name || 'product-workspace'
+  const ghUser = shOut('gh api user --jq .login') || 'user'
+  const autoSiteName = `${ghUser}-${repoName}`.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+  console.log(`▶ Auto-create Netlify site "${autoSiteName}" + link this repo...`)
+  // `netlify init --manual` 走 non-interactive flow,自動 create site + write .netlify/state.json
+  try {
+    sh(`netlify sites:create --name="${autoSiteName}" --account-slug=$(netlify api listAccountsForUser --json 2>/dev/null | jq -r '.[0].slug // "personal"' 2>/dev/null || echo personal)`)
+    sh('netlify link --name=' + autoSiteName)
+  } catch {
+    console.log('⚠️ Auto-create failed(可能 site name 已存在或 account 不允許新建)。Fall back to interactive netlify init...')
+    sh('netlify init')
+  }
 }
 const state = JSON.parse(readFileSync('.netlify/state.json', 'utf8'))
 const siteId = state.siteId
@@ -101,12 +112,26 @@ sh(`netlify api provisionSiteIdentity --data='${JSON.stringify({ site_id: siteId
 console.log('✓ Identity provisioned + visitor access set private')
 console.log('')
 
-// Step 5: Invite users
-const emails = await rl.question('▶ Team emails to invite(comma-separated,e.g. alice@x.com,bob@y.com)\n  > ')
+// Step 5: Invite users(2026-05-26 enhanced — env var preset 跳過 interactive prompt)
+// NETLIFY_TEAM_EMAILS env var(comma-sep)→ auto-invite without prompt
+// 否則 --skip-invite flag 完全跳過 → user 後續去 Dashboard 手動 invite
+const args = new Set(process.argv.slice(2))
+const skipInvite = args.has('--skip-invite')
+let emails = process.env.NETLIFY_TEAM_EMAILS || ''
+
+if (!emails && !skipInvite) {
+  console.log('▶ Team emails to invite(可選,空 enter 跳過,設 NETLIFY_TEAM_EMAILS env 預設 / 或 --skip-invite flag)')
+  emails = await rl.question('  > ')
+}
+
 const emailList = emails.split(',').map(e => e.trim()).filter(Boolean)
-for (const email of emailList) {
-  sh(`netlify api inviteSiteAccount --data='${JSON.stringify({ site_id: siteId, body: { email } })}' 2>/dev/null || echo "⚠️ Failed to invite ${email}(可能 Identity 尚未完全 provision,稍後手動 invite via Dashboard)"`)
-  console.log(`  ✉ Invited: ${email}`)
+if (emailList.length === 0) {
+  console.log('⏭ Skip team invite(可後續在 Netlify Dashboard 手動 invite)')
+} else {
+  for (const email of emailList) {
+    sh(`netlify api inviteSiteAccount --data='${JSON.stringify({ site_id: siteId, body: { email } })}' 2>/dev/null || echo "⚠️ Failed to invite ${email}(可能 Identity 尚未完全 provision,稍後手動 invite via Dashboard)"`)
+    console.log(`  ✉ Invited: ${email}`)
+  }
 }
 console.log('')
 

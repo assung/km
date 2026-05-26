@@ -106,6 +106,35 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 
 **OAuth security 本質**:Netlify 不能完全 headless 自動建 user 帳號(OAuth 必 user 在瀏覽器 click「Authorize」)。**最自動化 = 2 clicks**(Continue with GitHub + Authorize Netlify GitHub App)。Script 自動處理其他 5 步。
 
+### 🚦 真實「斷點」清單(2026-05-26 verified — 哪些真不能自動,哪些其實可以)
+
+| # | 斷點 | 可自動? | 設計選擇 |
+|---|---|---|---|
+| 1 | Plugin install slash command | ❌ Claude Code architecture 不允許 AI type slash 給自己 | Postinstall warning 直印 2 行 copy-paste,user 30 秒搞定 |
+| 2 | `netlify login` OAuth | ❌ OAuth security 強制 user 在瀏覽器 click「Authorize」 | gh auth pre-check + 解釋「Continue with GitHub 1 click」 |
+| 3 | `netlify init` site 建立 + 選擇 | ✅ **已自動**(2026-05-26 enhance):`netlify sites:create` + `netlify link` auto-run,site name = `<gh-user>-<repo>` |
+| 4 | Team email invite | ✅ **已自動**(2026-05-26 enhance):設 `NETLIFY_TEAM_EMAILS` env var(or `.env`)→ skip prompt;or `npm run setup:netlify -- --skip-invite` 完全跳過 |
+| 5 | Push main 觸發 production | ❌ **設計上 user gate**(Git solo-work canonical 鐵律 — user「OK / 合 main」trigger 才推 main,讓 user 在 preview 驗完才 ship) | 不修;是設計選擇不是 bug |
+
+→ **真斷點剩 2 個(plugin install + OAuth),都是「外部 architecture / security」不可繞**。 onboarding 流程約 3-5 分鐘(2 個 click + 等網路)。
+
+### 📋 Frictionless onboarding modes
+
+**互動模式**(預設):
+```
+npm install                        # postinstall warning + 41 deps install
+# (Claude session) /plugin marketplace add github:ajenchen/design-system
+# (Claude session) /plugin install design-system@qijenchen-ds
+npm run setup:netlify              # 互動 prompt 問 team emails
+```
+
+**Zero-prompt 模式**(CI / 老手 user):
+```
+echo "NETLIFY_TEAM_EMAILS=alice@x.com,bob@y.com" > .env
+npm install
+npm run setup:netlify -- --skip-invite   # OR 設 .env 走 NETLIFY_TEAM_EMAILS auto-invite
+```
+
 **Claude DO NOT**:假設 user 已知 Netlify / 跳過 onboarding 直接寫 code / 沒解釋就要 user 跑 setup 命令 / 嘗試「fully headless 註冊」(OAuth security violation,做不到)。
 
 ---
