@@ -110,7 +110,7 @@ function DashboardPage() {
       <section className="grid grid-cols-3 gap-4">
         {['Revenue', 'Active customers', 'Pending orders'].map((label) => (
           <div key={label} className="rounded-lg border border-divider bg-surface p-4">
-            <div className="text-caption text-fg-muted">{label}</div>
+            <div className="text-caption text-fg-secondary">{label}</div>
             <div className="text-h3 mt-1">—</div>
           </div>
         ))}
