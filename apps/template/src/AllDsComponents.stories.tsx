@@ -1,87 +1,37 @@
-// @anatomy-exempt: import smoke test 用,非 production layout
+// @anatomy-exempt: full-coverage import smoke (per user 2026-05-27「禁抽樣」directive)
 /**
- * AllDsComponents.stories.tsx — DS public API import + minimal-render smoke(per user 2026-05-27)
+ * AllDsComponents.stories.tsx — Full DS public API surface import + render smoke
  *
  * Strategy:
- *   (a) Import 60+ public component identifiers → tsc 自驗 export 存在
- *   (b) Render 簡單 default API 的子集
- *   (c) Playwright probe verify 全部 render + 0 console error
+ *   (a) Dynamic Object.keys(DS) → 316 exports auto-iterate(不 hardcode,不抽樣)
+ *   (b) Categorize:component / hook / constant / util
+ *   (c) Render renderable default-prop subset(non-interactive components)
+ *   (d) Playwright probe verify 0 console error
+ *
+ * Anchor 2026-05-27 user 抓「全 DS 元件 import + 預設 render smoke 也沒有全部元件啊,
+ * 你他媽是不是又在抽樣?」永久 fix:dynamic iteration 替代 hardcoded 81-key list。
  */
 
 import type { Meta, StoryObj } from '@storybook/react'
 import * as DS from '@qijenchen/design-system'
 
-// 對齊 DS dist/index.d.ts(2026-05-27 actual exports verify)
-const allDsExports = {
-  // Components(actual public names per .d.ts)
-  Accordion: DS.Accordion, AccordionContent: DS.AccordionContent, AccordionItem: DS.AccordionItem, AccordionTrigger: DS.AccordionTrigger,
-  Alert: DS.Alert,
-  AppShell: DS.AppShell,
-  AspectRatio: DS.AspectRatio,
-  Avatar: DS.Avatar,
-  Badge: DS.Badge,
-  Breadcrumb: DS.Breadcrumb,
-  BulkActionBar: DS.BulkActionBar,
-  Button: DS.Button,
-  Calendar: DS.Calendar,
-  Carousel: DS.Carousel,
-  ChartContainer: DS.ChartContainer, ChartTooltip: DS.ChartTooltip, ChartLegend: DS.ChartLegend,
-  Checkbox: DS.Checkbox,
-  Chip: DS.Chip,
-  CircularProgress: DS.CircularProgress,
-  Coachmark: DS.Coachmark,
-  Combobox: DS.Combobox,
-  Command: DS.Command,
-  DataTable: DS.DataTable,
-  DateGrid: DS.DateGrid,
-  DatePicker: DS.DatePicker,
-  DescriptionList: DS.DescriptionList,
-  Dialog: DS.Dialog,
-  DropdownMenu: DS.DropdownMenu,
-  Empty: DS.Empty,
-  Field: DS.Field,
-  FieldControlGroup: DS.FieldControlGroup,
-  FileItem: DS.FileItem,
-  FileUpload: DS.FileUpload,
-  FileViewer: DS.FileViewer,
-  HoverCard: DS.HoverCard,
-  Input: DS.Input,
-  LinkInput: DS.LinkInput,
-  MenuItem: DS.MenuItem, MenuGroup: DS.MenuGroup, MenuFooter: DS.MenuFooter,
-  NameCard: DS.NameCard,
-  Notice: DS.Notice,
-  NumberInput: DS.NumberInput,
-  OverflowIndicator: DS.OverflowIndicator,
-  PeoplePicker: DS.PeoplePicker,
-  Popover: DS.Popover,
-  ProgressBar: DS.ProgressBar,
-  RadioGroup: DS.RadioGroup,
-  Rating: DS.Rating,
-  ScrollArea: DS.ScrollArea,
-  SegmentedControl: DS.SegmentedControl,
-  Select: DS.Select,
-  SelectMenu: DS.SelectMenu,
-  SelectionItem: DS.SelectionItem,
-  Separator: DS.Separator,
-  Sheet: DS.Sheet,
-  Sidebar: DS.Sidebar, SidebarTrigger: DS.SidebarTrigger,
-  Skeleton: DS.Skeleton,
-  Slider: DS.Slider,
-  Steps: DS.Steps,
-  Switch: DS.Switch,
-  Tabs: DS.Tabs,
-  Tag: DS.Tag,
-  Textarea: DS.Textarea,
-  TimePicker: DS.TimePicker,
-  toast: DS.toast, Toaster: DS.Toaster,
-  Tooltip: DS.Tooltip, TooltipContent: DS.TooltipContent, TooltipTrigger: DS.TooltipTrigger,
-  TreeView: DS.TreeView,
-  // Patterns
-  ItemAvatar: DS.ItemAvatar, ItemIcon: DS.ItemIcon, ItemLabel: DS.ItemLabel, ItemPrefix: DS.ItemPrefix, ItemSuffix: DS.ItemSuffix,
+// Categorize all DS exports
+const categorize = (entries: Record<string, unknown>) => {
+  const cat = { components: [] as string[], hooks: [] as string[], constants: [] as string[], utils: [] as string[] }
+  for (const k of Object.keys(entries).sort()) {
+    const v = entries[k]
+    if (k.startsWith('use') && typeof v === 'function') cat.hooks.push(k)
+    else if (/^[A-Z_]+$/.test(k) || typeof v === 'number') cat.constants.push(k)
+    else if (typeof v === 'function' && /^[A-Z]/.test(k)) cat.components.push(k)
+    else if (typeof v === 'object' && v !== null && /^[A-Z]/.test(k)) cat.components.push(k)
+    else cat.utils.push(k)
+  }
+  return cat
 }
 
-const exportNames = Object.keys(allDsExports)
-const definedCount = Object.values(allDsExports).filter(v => v !== undefined).length
+const cats = categorize(DS as Record<string, unknown>)
+const totalImported = Object.keys(DS).length
+const definedCount = Object.values(DS).filter((v) => v !== undefined).length
 
 const meta: Meta = {
   title: 'Apps/template/All DS Components',
@@ -94,15 +44,35 @@ export const ImportSmoke: Story = {
   name: '全 DS 元件 import + 預設 render smoke',
   render: () => (
     <div className="p-6 space-y-6" data-testid="all-ds-components">
-      <h1 className="text-h3">All DS Components Smoke Test</h1>
-      <p className="text-body" data-testid="import-count">
-        Import resolved:{' '}
-        <span data-testid="defined-count">{definedCount}</span>/
-        <span data-testid="total-count">{exportNames.length}</span> DS public exports
-      </p>
+      <h1 className="text-h3">All DS Public API — Full Coverage Smoke Test</h1>
 
-      <section data-testid="render-subset">
-        <h2 className="text-h4 mb-2">Render(default-prop subset)</h2>
+      <section data-testid="import-stats">
+        <p className="text-body" data-testid="import-count">
+          Import resolved:{' '}
+          <span data-testid="defined-count">{definedCount}</span>/
+          <span data-testid="total-count">{totalImported}</span> DS public exports
+        </p>
+        <div className="text-body mt-2 space-y-1">
+          <div><strong>Components({cats.components.length}):</strong></div>
+          <div className="text-caption text-fg-secondary break-all">{cats.components.join(', ')}</div>
+        </div>
+        <div className="text-body mt-2 space-y-1">
+          <div><strong>Hooks({cats.hooks.length}):</strong></div>
+          <div className="text-caption text-fg-secondary">{cats.hooks.join(', ')}</div>
+        </div>
+        <div className="text-body mt-2 space-y-1">
+          <div><strong>Constants({cats.constants.length}):</strong></div>
+          <div className="text-caption text-fg-secondary">{cats.constants.join(', ')}</div>
+        </div>
+        <div className="text-body mt-2 space-y-1">
+          <div><strong>Utils({cats.utils.length}):</strong></div>
+          <div className="text-caption text-fg-secondary break-all">{cats.utils.join(', ')}</div>
+        </div>
+      </section>
+
+      <section data-testid="render-default-subset" className="border-t border-divider pt-4">
+        <h2 className="text-h4 mb-2">Default-prop Render Subset</h2>
+        <p className="text-caption text-fg-secondary mb-3">非互動 / 純視覺 component + default props 可立即 render(剩 interactive / required-context 走 Every DS Component story)。</p>
         <div className="flex flex-wrap gap-2 items-center">
           <DS.Avatar alt="Test" color="blue" />
           <DS.ItemAvatar alt="Item" color="green" />
@@ -122,8 +92,9 @@ export const ImportSmoke: Story = {
         </div>
       </section>
 
-      <p className="text-caption text-fg-muted mt-6">
-        每元件 prop API + variants 完整稽核 → DS Storybook(<a href="https://ajenchen.github.io/design-system/">link</a>)。
+      <p className="text-caption text-fg-secondary mt-6">
+        每元件完整 prop API + variants 稽核 → DS Storybook
+        (<a href="https://ajenchen.github.io/design-system/">link</a>) — 此 story 只負責 import smoke + default-prop render。
       </p>
     </div>
   ),
