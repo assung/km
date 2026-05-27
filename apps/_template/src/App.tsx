@@ -28,6 +28,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
+  Avatar,
   ItemAvatar,
   Button,
 } from '@qijenchen/design-system'
@@ -46,8 +47,9 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
+        {/* Chrome header avatar canonical(per header-canonical.spec.md:57-72):chrome header 不是 row context → raw <Avatar size={24}>,禁用 <ItemAvatar>(會誤啟動 row anatomy lookup)*/}
         <div className="flex items-center gap-2 min-w-0 group-data-[collapsible=icon]:justify-center">
-          <ItemAvatar alt="Acme Product" shape="square" color="blue" solid />
+          <Avatar alt="Acme Product" size={24} shape="square" color="blue" solid />
           <span className="text-body-lg font-medium truncate group-data-[collapsible=icon]:hidden">Acme Product</span>
         </div>
       </SidebarHeader>
@@ -67,11 +69,14 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        {/* 對齊 DS canonical UserFooter(sidebar.stories.tsx):asChild + <div role="group"> + data-sidebar="menu-label" 必有,否則 SidebarMenuButton 把 children 全 wrap 進 ItemLabel 視覺垂直 stack */}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton id="user-profile">
-              <ItemAvatar alt="Current user" color="blue" />
-              <span className="truncate">當前使用者</span>
+            <SidebarMenuButton asChild>
+              <div role="group" aria-label="當前使用者">
+                <ItemAvatar alt="Current user" color="blue" />
+                <span data-sidebar="menu-label" className="min-w-0 flex-1 truncate">當前使用者</span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
