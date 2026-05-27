@@ -57,6 +57,30 @@ git push origin main   # Netlify auto build storybook + per-branch preview
 
 DS-side hook 自動 inject deploy URL into Claude reply(plugin 提供)。
 
+### Step 7 — Keep DS plugin + npm deps 永遠最新(auto-sync chain)
+
+DS repo 任何 push main → 兩條 auto-chain 同時跑,確保 fork repo 不偏移:
+
+**Chain 1 — npm dependency**(自動):
+- DS bump version + tag push → `release.yml` 跑 npm publish → `repository_dispatch ds-published`
+- DS push main(non-version SSOT change)→ `ssot-sync-dispatch.yml` 跑 → `repository_dispatch ds-ssot-changed`
+- 此 PW repo `.github/workflows/sync-design-system.yml` 收 event → `npm update @qijenchen/*` + commit + push
+- Netlify auto rebuild → DataTable / 全 token / 全 component 永遠最新
+
+**Chain 2 — Plugin hooks/skills/memory**(半自動):
+- DS 改 hook / skill / governance → plugin.json + marketplace.json 自動 bump version(per DS `sync-version-to-all-manifests.mjs`)
+- Fork user 在 terminal 跑 1 command(2026-05-27 改用 Claude CLI `claude plugin` integration):
+
+```bash
+npm run sync-all   # 同時 update npm + plugin marketplace + plugin install
+```
+
+完整等同手動跑:`npm update @qijenchen/*` + `claude plugin marketplace update qijenchen-ds` + `claude plugin update design-system@qijenchen-ds`。
+
+Plugin 改動需 **restart Claude Code session** 才 apply(SDK 限制)。
+
+Session_start hook `check_plugin_freshness.sh` 偵測 marketplace stale → prompt run `sync-all`。
+
 ## Layout
 
 ```

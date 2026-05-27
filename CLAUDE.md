@@ -1,5 +1,18 @@
 # Product Workspace — Claude Code Instructions
 
+## 🚨 4 件 critical 事(fork user 必做才能 SSOT 對齊 DS)
+
+per 2026-05-27 user verbatim「fork template 必須要能跟 ds repo 完全 ssot 一模一樣」+ 完整 hook chain audit:
+
+1. **`npm run sync-all`** — 1 命令 sync npm + plugin marketplace + plugin install(取代之前 3 個跨環境命令)。**DS 拿掉 daily cron,fork user 必主動跑**
+2. **Restart Claude Code session** — sync-all 完後必 restart(plugin/addon 改動 SDK 限制需 restart 才 apply)
+3. **不亂加 escape markers** — `@ds-misuse-allow / @story-baseline-allow / @consumer-catalog-allow / @overlay-open-skip / @template-customized / @layout-space-magic-ok / @story-trait-allow / @propose-cite-skip / @anatomy-exempt / @benchmark-unverified`。Hook `check_escape_marker_abuse.sh` 攔 ≥3 distinct OR ≥5 total 同 file
+4. **走 DS primitive composition** — 不自寫 `<MyButton>` widget bypass(hook `check_consumer_ds_primitive_misuse` + `check_consumer_no_ds_catalog` 攔)
+
+跑完 4 條件 = SSOT 設計原則 100% 對齊 DS;若不跑 chain 會 degrade gracefully(hook 攔 anti-pattern,不靜默 drift)。
+
+---
+
 ## 🛑 第 −1 步:Plugin install BLOCKER(2026-05-26 anchor — 沒裝 = 視覺跑版 + AI 憑記憶寫 mock)
 
 **Claude 開啟本 repo 第一件事(沒裝 plugin 不准動 production code)**:
@@ -8,6 +21,8 @@
 /plugin marketplace add github:ajenchen/design-system
 /plugin install design-system@qijenchen-ds
 ```
+
+**之後同步用**:`npm run sync-all`(per critical step 1)。
 
 **沒裝後果**(2026-05-26 anchor case):
 - 41 個 DS governance hooks 全部不 fire(M29 anchor preflight / approval-preflight / SSOT propagation 全失效)
