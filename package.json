@@ -19,7 +19,7 @@
     "setup:netlify": "node scripts/setup-netlify-access.mjs",
     "deploy-url": "node scripts/deploy-url.mjs",
     "postinstall": "node scripts/check-plugin-installed.mjs",
-    "sync-all": "npm update @qijenchen/design-system @qijenchen/storybook-config --legacy-peer-deps && claude plugin marketplace update qijenchen-ds 2>/dev/null && claude plugin update design-system@qijenchen-ds 2>/dev/null && echo \"✓ npm + plugin updated. Restart Claude Code session to apply plugin changes.\""
+    "sync-all": "node scripts/sync-all.mjs"
   },
   "dependencies": {
     "@qijenchen/design-system": "^0.1.0-beta.32",

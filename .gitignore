@@ -28,4 +28,16 @@ Icon?
 # Temp
 tmp/
 .cache/
-tsconfig.tsbuildinfo
+
+# TypeScript build cache(any name,不只 tsconfig)
+*.tsbuildinfo
+
+# Modern stack caches
+.turbo/
+.next/
+.parcel-cache/
+coverage/
+
+# Netlify CLI per-user state(`netlify link` / `setup:netlify` 產生,含 site id /
+# auth — 必 per-user 不可共享)
+.netlify/
