@@ -59,7 +59,7 @@ export default function App() {
 - `npm run setup:netlify`(1 OAuth click)auto-creates site `${ghUser}-${repoName}.netlify.app` + Identity gate
 - 之後每 push main → 自動 build + deploy + URL 進 Claude reply(`.claude/hooks/inject_deploy_url_after_push.sh`)
 
-**Per-app standalone deploy**(`apps/<name>/dist` 獨立 site)是 advanced option,需 `NETLIFY_SITE_ID_<NAME_UPPERCASE>` + `.github/workflows/deploy.yml` matrix(legacy approach,通常不用,Storybook 統一展示 OK)。
+**Per-app standalone deploy**(`apps/<name>/dist` 獨立 site)若需要,自建 `.github/workflows/<app>-deploy.yml` + Netlify secrets。但通常不用 — template Storybook 已統一展示所有 apps,沒必要 fragment deploy。
 
 ## 找 DS component 用法
 
