@@ -26,9 +26,9 @@
 
 | 症狀 | 修法 |
 |---|---|
-| `/design-system-audit` 等 skills 沒出現 | 跑 `npx qijenchen-ds-init` → 重啟 Claude session |
-| DS hooks 沒 fire | 確認 `.claude/design-system/hooks/` symlink 存在(`ls -la .claude/`) |
-| CLAUDE.md instructions 沒 load | `CLAUDE.design-system.md` symlink 在 cwd(`ls -la CLAUDE*`) |
+| `/design-system-audit` 等 skills 沒出現 | 在 Claude Code 跑 `/plugin marketplace add github:ajenchen/design-system` + `/plugin install design-system@qijenchen-ds` → 重啟 session |
+| DS hooks 沒 fire | 確認 DS plugin 已安裝；`npm run sync-all` 後重啟 Claude Code |
+| CLAUDE.md instructions 沒 load | 讀本 repo `CLAUDE.md` 的 Cross-load DS canonical step，並確認 `node_modules/@qijenchen/design-system/CLAUDE.md` 存在 |
 
 ## Netlify deploy
 

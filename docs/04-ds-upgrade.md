@@ -2,26 +2,28 @@
 
 `@qijenchen/design-system` 升新版的流程。
 
-## 自動 / 手動 2 條路
+## 自動 / 手動 3 條路
 
-### 路 A:Dependabot daily PR(autonomous)
+### 路 A:DS repository_dispatch(auto)
 
-`.github/dependabot.yml` 已配 daily check。每天 0 UTC 檢測 npm 新版本 → 自動開 PR 含 version bump + diff。
+DS release workflow 會送 `design-system-published` / `ds-published` event；非版本 SSOT main push 會送 `ds-ssot-changed` event。`.github/workflows/sync-design-system.yml` 收到後自動：
 
-Review steps:
-1. PR notification 進來
-2. 看 PR description / commit history(對應 DS release notes — https://github.com/ajenchen/design-system/releases)
-3. CI 跑完綠 → merge
+1. `npm update @qijenchen/design-system @qijenchen/storybook-config --legacy-peer-deps`
+2. sync DS canonical template if the app has not opted out
+3. build verify
+4. commit + push if changed
 
-### 路 B:手動 npm update(immediate)
+### 路 B:fork user manual sync
 
 ```
-npm update @qijenchen/design-system @qijenchen/storybook-config --legacy-peer-deps
-git diff package-lock.json | head
-# 看 version 確認對
-git add package-lock.json && git commit -m "chore(deps): bump DS"
-git push
+npm run sync-all
 ```
+
+This updates npm packages, Claude plugin marketplace metadata, and the installed plugin. Restart Claude Code after it succeeds.
+
+### 路 C:Dependabot fallback
+
+`.github/dependabot.yml` is daily fallback for npm package drift if cross-repo dispatch fails.
 
 ## Breaking change(major version bump)
 
@@ -44,13 +46,14 @@ npm install @qijenchen/design-system@0.1.0-beta.13 --save-exact --legacy-peer-de
 
 ## 同步 SSOT canonical(skills / hooks / CLAUDE.md)
 
-`npx qijenchen-ds-init` 一次跑後,`.claude/design-system/` symlink 永遠指向 `node_modules/.../ds-canonical/`。`npm update` 後 symlink 自動跟新版 canonical(per Phase 4.12 cli-init.mjs)。
+Current path is Claude plugin install, not `qijenchen-ds-init` symlinks:
 
-Re-run init(若 symlink 損壞):
+```text
+/plugin marketplace add github:ajenchen/design-system
+/plugin install design-system@qijenchen-ds
 ```
-rm -rf .claude/design-system CLAUDE.design-system.md
-npx qijenchen-ds-init
-```
+
+After first install, use `npm run sync-all` for future updates.
 
 ## Next
 

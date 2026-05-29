@@ -5,8 +5,7 @@
   "description": "GitHub Template Repository — fork-and-go monorepo for product team apps consuming @qijenchen/design-system. Use 'Use this template' button OR clone + npm run create-app <product-name>.",
   "type": "module",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev": "echo 'Pick an app: cd apps/<name> && npm run dev' && exit 1",
@@ -22,8 +21,8 @@
     "sync-all": "node scripts/sync-all.mjs"
   },
   "dependencies": {
-    "@qijenchen/design-system": "^0.1.0-beta.32",
-    "@qijenchen/storybook-config": "^0.1.0-beta.32",
+    "@qijenchen/design-system": "^0.1.0-beta.33",
+    "@qijenchen/storybook-config": "^0.1.0-beta.33",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
