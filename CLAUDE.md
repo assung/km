@@ -64,7 +64,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 | 1 | `npm install` | 拉 `@qijenchen/design-system` + `@qijenchen/storybook-config` npm deps + DS canonical 隨 npm 落地 |
 | 2 | `/plugin marketplace add github:ajenchen/design-system` | 拿 DS governance plugin(22 skills / 59 hooks 自動下載) |
 | 3 | `/plugin install design-system@qijenchen-ds` | 啟動 plugin |
-| 4 | `npm run setup:netlify` | Netlify CLI 自動 enable Identity + restrict access + invite team |
+| 4 | `npm run setup:netlify` | Netlify CLI install + login + site 建 + 連 repo;最後印 dashboard URL + Basic Password 設定指引(2026-05-29 改:Identity deprecated;Basic Password 是 free-tier 唯一可用 access control)|
 | 5 | `npm run create-app <new-app-name>`(若需新 product app) | copy `template/` → 新 app folder |
 | 6 | `npm run storybook` 本地 verify | 確認 DS components 視覺正確 |
 | 7 | Push main → Netlify auto-deploy + Storybook auto-rebuild | done |
@@ -95,62 +95,73 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 ## 📚 Storybook 用途分工
 
 - **DS repo Storybook**(<https://ajenchen-design-system.netlify.app/>)= DS library 元件 reference docs(public 或 password protected by DS owner)
-- **本 repo Storybook**(Netlify deploy,Identity protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
+- **本 repo Storybook**(Netlify deploy,Basic Password protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
 - Stories 寫 PRODUCT scenarios(不是 DS element trait grid)— DS trait grid 是 DS repo 責任
 
 ---
 
-## 🔒 Access control(strict required for Netlify)
+## 🔒 Access control — Basic Password(2026-05-29 改 from Identity)
 
-**Default = Netlify Identity**(自動 invite,per-user revoke,免費 1000 users)。
-- `npm run setup:netlify` 自動跑完(scripts/setup-netlify-access.mjs)
-- 或手動 Dashboard:Site → Identity → Enable + Invite-only + Restrict access + Invite users
-- `.storybook/manager-head.html` Identity widget 已 codify(fork user 不需動 code)
+**Default = Netlify Basic Password**(free-tier 唯一可用 access control,共用 password)。
+
+**為何不是 Identity?**
+- Netlify 2024 公告 Identity **deprecated**,新帳號可能看不到 Identity menu
+- Team protection 🔒 鎖,要 Pro plan $19/mo
+- → Basic Password 是 free-tier 真實可用方案
+
+**設定流程**:
+1. `npm run setup:netlify` 自動跑 CLI install + login + site 建 + 連 repo
+2. Script 跑完印 dashboard URL → 跟著做 2 step 設 password(30 秒)
+3. 把 URL + password 私訊 stakeholder
+
+**手動 dashboard 步驟**(script 印出):
+- 打開 `https://app.netlify.com/projects/<site>/configuration/visitor-access`
+- **Password Protection** → 「**Basic protection**」→ 輸 password → **Save**
+
+**`.storybook/manager-head.html`**:Identity widget 已移除(Basic Password 在 Netlify edge 層擋,client widget 不需要)。
 
 ### 🆘 Claude 引導使用者 — Netlify onboarding(user 不一定知道 Netlify)
 
 **當 user 卡在「不知道該怎麼設定 deploy / Netlify」時,Claude 必依以下話術引導**:
 
-1. **解釋 Netlify 是什麼**(一句話):「Netlify 是免費 deploy 平台(類似 Vercel),用來自動跑 Storybook + 給 team 看內部 product UI。Free tier 1000 user / 100GB bandwidth / 0 maintenance」
-2. **沒帳號?GitHub 1-click 自動建**:「因為你 fork 本 repo 必有 GitHub 帳號,Netlify 走 GitHub OAuth — 跑 `npm run setup:netlify` Step 2 會開瀏覽器,點『Continue with GitHub』 → GitHub 授權 1 click → Netlify 自動用你的 GitHub identity 建帳號,< 5 秒搞定,**不需要 separate sign up**」
-3. **不會用 CLI 怎麼辦?**「全程互動式問答(輸入 team email 邀請即可),script 內 step-by-step echo 你下一步該做什麼」
-4. **怕設錯權限?**「script 預設 visitor_access=private(只有 invited team 可看)+ 雙保險 netlify.toml `X-Robots-Tag noindex`(Google 不收錄)」
-5. **Setup 失敗 fallback**「告訴 user 去 https://app.netlify.com/sites/<your-site>/settings/identity 手動 enable Identity + restrict access + invite users。詳 `netlify.toml` 註解」
-6. **驗證 deploy 成功**「push main 後 2-3 min,Netlify Dashboard `Deploys` tab 變綠勾 = OK。Site URL = `https://<site-name>.netlify.app`」
-7. **GitHub CLI 未 login?**「Setup script Step 0 會偵測 `gh auth status`,若 user 沒 login 會建議先跑 `gh auth login`(瀏覽器 OAuth,1 分鐘)— 這樣 Netlify 連 fork repo 才能順利讀 push event auto-deploy」
+1. **解釋 Netlify 是什麼**(一句話):「Netlify 是免費 deploy 平台(類似 Vercel),用來自動跑 Storybook + 給 team 看內部 product UI。Free tier 100GB bandwidth / 0 maintenance」
+2. **沒帳號?GitHub 1-click 自動建**:「fork 本 repo 必有 GitHub 帳號 → 跑 `npm run setup:netlify` 會開瀏覽器 OAuth → 點『Continue with GitHub』授權 → Netlify 自動建帳號(<5 秒)」
+3. **設 Basic Password** 不在 CLI 範圍:「script 跑完印 dashboard URL,你打開連結點 2 個 radio button 輸 password 即可(30 秒)。Netlify CLI 沒提供 password protection 的 API(2026-05-29 verified),只能手動。」
+4. **防 SEO** 已自動:「`netlify.toml` 已 ship `X-Robots-Tag noindex`,Google 不收錄 URL。但**真擋陌生人靠 password**,SEO header 只防搜尋引擎不防直接訪問」
+5. **驗證 deploy 成功**:「push main 後 2-3 min,Netlify Dashboard `Deploys` tab 變綠勾 = OK。Site URL = `https://<site-name>.netlify.app`」
+6. **GitHub CLI 未 login?**「Setup script Step 0 偵測 `gh auth status`;沒 login 建議先跑 `gh auth login`(瀏覽器 OAuth,1 分鐘)」
+7. **Cloud-dev path**:「不想本地?GitHub Codespaces 跑得動(`<> Code → Codespaces → Create`),內裝 `npm i -g @anthropic-ai/claude-code` 後 governance 全 fire。免費 60h/月」
 
-**OAuth security 本質**:Netlify 不能完全 headless 自動建 user 帳號(OAuth 必 user 在瀏覽器 click「Authorize」)。**最自動化 = 2 clicks**(Continue with GitHub + Authorize Netlify GitHub App)。Script 自動處理其他 5 步。
+### 🚦 真實「斷點」清單(2026-05-29 verified)
 
-### 🚦 真實「斷點」清單(2026-05-26 verified — 哪些真不能自動,哪些其實可以)
-
-| # | 斷點 | 可自動? | 設計選擇 |
+| # | 斷點 | 可自動? | 為何 / 替代 |
 |---|---|---|---|
-| 1 | Plugin install slash command | ❌ Claude Code architecture 不允許 AI type slash 給自己 | Postinstall warning 直印 2 行 copy-paste,user 30 秒搞定 |
-| 2 | `netlify login` OAuth | ❌ OAuth security 強制 user 在瀏覽器 click「Authorize」 | gh auth pre-check + 解釋「Continue with GitHub 1 click」 |
-| 3 | `netlify init` site 建立 + 選擇 | ✅ **已自動**(2026-05-26 enhance):`netlify sites:create` + `netlify link` auto-run,site name = `<gh-user>-<repo>` |
-| 4 | Team email invite | ✅ **已自動**(2026-05-26 enhance):設 `NETLIFY_TEAM_EMAILS` env var(or `.env`)→ skip prompt;or `npm run setup:netlify -- --skip-invite` 完全跳過 |
-| 5 | Push main 觸發 production | ❌ **設計上 user gate**(Git solo-work canonical 鐵律 — user「OK / 合 main」trigger 才推 main,讓 user 在 preview 驗完才 ship) | 不修;是設計選擇不是 bug |
+| 1 | Plugin install slash command | ❌ Architecture | Postinstall warning 印 copy-paste,30 秒 |
+| 2 | `netlify login` OAuth | ❌ OAuth security | 瀏覽器 click「Authorize」1 次 |
+| 3 | `netlify init` site 建立 | ✅ **已自動**:`sites:create` + `link`,site name = `<gh-user>-<repo>` |
+| 4 | **設 Basic Password** | ❌ **Netlify CLI 沒提供 password API**(2026-05-29 verified) | Script 印 dashboard URL,user 點 2 radio button + 輸 password + Save(30 秒) |
+| 5 | 分享 password 給 stakeholder | ❌ 沒辦法自動 | Team chat / Slack DM 私訊 |
+| 6 | Push main 觸發 production | ❌ **設計上 user gate**(Git solo-work canonical) | 不修 |
 
-→ **真斷點剩 2 個(plugin install + OAuth),都是「外部 architecture / security」不可繞**。 onboarding 流程約 3-5 分鐘(2 個 click + 等網路)。
+→ **真斷點剩 4 個**:plugin install(30 秒)+ OAuth(1 click)+ password 設(30 秒)+ password 分享(私訊)。Total 約 5 分鐘。
 
 ### 📋 Frictionless onboarding modes
 
-**互動模式**(預設):
-```
-npm install                        # postinstall warning + 41 deps install
+**互動模式**(預設,本地 macOS):
+```bash
+npm install                      # postinstall warning
 # (Claude session) /plugin marketplace add github:ajenchen/design-system
 # (Claude session) /plugin install design-system@qijenchen-ds
-npm run setup:netlify              # 互動 prompt 問 team emails
+npm run setup:netlify            # CLI + site + 印 password dashboard URL
+# 開瀏覽器點 Save password → done
 ```
 
-**Zero-prompt 模式**(CI / 老手 user):
-```
-echo "NETLIFY_TEAM_EMAILS=alice@x.com,bob@y.com" > .env
-npm install
-npm run setup:netlify -- --skip-invite   # OR 設 .env 走 NETLIFY_TEAM_EMAILS auto-invite
-```
+**Cloud-dev 模式**(3 path 選一):
+- **Path 1 推薦** — Claude Code 直連 fork repo(sandbox 自動 clone + governance 跑):從 claude.ai/code 或 Claude 桌面新增 GitHub repo → sandbox 內直接 `claude` 跑 + `npm install` + 寫 code + push。**user 目前工作流,零地端**
+- **Path 2** — GitHub Codespaces(`.devcontainer/` 已 ship):fork → Code → Codespaces → Create → container 自動裝齊
+- **Path 3** — 本地 `git clone` + `npm install` + `claude`
 
-**Claude DO NOT**:假設 user 已知 Netlify / 跳過 onboarding 直接寫 code / 沒解釋就要 user 跑 setup 命令 / 嘗試「fully headless 註冊」(OAuth security violation,做不到)。
+**Claude DO NOT**:假設 user 已知 Netlify / 跳過 onboarding 直接寫 code / 沒解釋就要 user 跑 setup 命令 / 嘗試「fully headless password 設定」(Netlify CLI 不支援,做不到)/ 推薦 Identity(已 deprecated)。
 
 ---
 

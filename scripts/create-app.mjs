@@ -118,7 +118,7 @@ console.log(`✓ Patched story titles → Apps/${name}/...(防 Storybook id 撞 
 console.log(`✓ Excluded build artifacts(node_modules / dist / *.tsbuildinfo / .turbo / .next / .cache)`)
 console.log(``)
 console.log(`Next steps:`)
-console.log(`  npm install            # install workspace deps`)
+console.log(`  npm install            # ← 必跑:重新 link workspace symlinks 讓 apps/${name}/node_modules 拿 DS deps`)
 console.log(`  cd apps/${name}`)
 console.log(`  npm run dev            # start dev server`)
 console.log(``)

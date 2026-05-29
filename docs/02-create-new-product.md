@@ -56,7 +56,7 @@ export default function App() {
 新 app 自動進 Storybook(`netlify.toml:14` `build.command = "npm run build-storybook"`)+ git push main → Netlify auto-rebuild → 可見於 `https://<your-netlify-site>/?path=/story/apps-<name>-...`。
 
 **Fork user 第一次 setup**:
-- `npm run setup:netlify`(1 OAuth click)auto-creates site `${ghUser}-${repoName}.netlify.app` + Identity gate
+- `npm run setup:netlify`(1 OAuth click)auto-creates site `${ghUser}-${repoName}.netlify.app` + 印 dashboard URL 教 user 30 秒設 Basic Password(per 2026-05-29 canonical;Identity 已 deprecated)
 - 之後每 push main → 自動 build + deploy + URL 進 Claude reply(`.claude/hooks/inject_deploy_url_after_push.sh`)
 
 **Per-app standalone deploy**(`apps/<name>/dist` 獨立 site)若需要,自建 `.github/workflows/<app>-deploy.yml` + Netlify secrets。但通常不用 — template Storybook 已統一展示所有 apps,沒必要 fragment deploy。
