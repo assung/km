@@ -46,14 +46,15 @@ npm run dev                          # localhost vite 啟動
 
 Storybook root config `.storybook/main.ts` 自動 glob `apps/**/*.stories.tsx`,**每加新 app stories 自動現身 storybook**,不用手動 register。
 
-### Step 5 — Setup Netlify(自動 site + 手動 password,3 分鐘)
+### Step 5 — Setup Netlify + 部署(免費密碼保護,3 分鐘)
 
 ```bash
-npm run setup:netlify   # 自動:CLI install + GitHub OAuth login + site 建 + 連 repo
-                        # 最後印 dashboard URL + 教你 30 秒設 Basic Password
+npm run setup:netlify       # 只做一次:CLI install + GitHub OAuth login + site 建
+cp .env.example .env        # 填 NETLIFY_BASIC_AUTH_USER / _PASSWORD / NETLIFY_SITE_ID
+npm run deploy:storybook    # build + 注入免費 _headers Basic Auth + deploy --prod
 ```
 
-**為何 Basic Password?** Identity(原本 invite-only 機制)2024 起 Netlify 已 deprecated,新帳號可能根本看不到 Identity menu;Team protection 鎖 Pro plan($19/mo)。**Basic Password 是 free-tier 唯一真擋陌生人的方法**(設一組共用 password,分享給 stakeholder)。
+**為何用 `_headers` Basic Auth?**(2026-06 修正)Netlify *dashboard* 的 Password Protection 其實是 **Pro 方案($20/mo)付費**功能,free / Starter 沒有(舊文件誤寫成免費)。Identity 也已於 2024 deprecated。**free-tier 真正能擋陌生人的是 HTTP Basic Auth via `_headers`**——`npm run deploy:storybook` 會把 `.env` 裡的帳密注入 build 產物(已 gitignore,不進版控),Netlify edge 層用瀏覽器帳密彈窗擋整站。
 
 ### Step 6 — Push main → 自動部署
 
@@ -162,25 +163,25 @@ Deploy URL 在 push 後 hook `inject_deploy_url_after_push.sh` 自動 inject 進
 2. Netlify 自動讀根目錄 `netlify.toml` → build `storybook-static` → deploy
 3. 每次 push main → Netlify auto rebuild。Per-branch preview 自動啟用。
 
-**Step 2 — 🔒 設 Basic Password Protection**(free-tier 唯一可用 access control):
+**Step 2 — 🔒 設密碼保護(免費 `_headers` Basic Auth)**:
 
-`npm run setup:netlify` 自動跑完 CLI install + login + site 建 + 連 repo,**最後印 dashboard 連結 + 30 秒 password 設定指引**。
+```bash
+cp .env.example .env        # 填 NETLIFY_BASIC_AUTH_USER / _PASSWORD / NETLIFY_SITE_ID
+npm run deploy:storybook    # build + 注入 _headers Basic Auth + deploy --prod
+```
 
-跟著 script 印的步驟手動 dashboard 設:
-1. 打開 `https://app.netlify.com/projects/<your-site>/configuration/visitor-access`
-2. **Password Protection** → 選「**Basic protection**」→ 輸 password → **Save**
-3. 把 site URL + password 私訊給 stakeholder(team Slack / DM)
+部署後打開 site URL → 應跳出瀏覽器帳密彈窗 → 把 **site URL + 帳密**私訊給 stakeholder(team Slack / DM)。帳密只寫進 build 產物 `storybook-static/_headers`(已 gitignore),**不進版控**。
 
-**為何只用 Basic Password?**(誠實版,2026-05-29 確認):
-- ❌ **Identity** = 2024 起 Netlify 公告 deprecated;新帳號可能看不到 Identity menu。原本「invite-only per-user」路徑**不再可用**
-- ❌ **Team protection 🔒** = 鎖,要 Pro plan $19/mo(fork user 不該被迫付費)
-- ❌ **Non-production deploys only 🔒** = 同上鎖
-- ✅ **Basic Password** = free-tier 唯一真擋陌生人的方法(設共用 password,分享 team)
+**為何用 `_headers` Basic Auth?**(2026-06 修正,前一版有誤):
+- ❌ **Dashboard Password Protection** = 其實是 **Pro 方案 $20/mo 付費**功能,free / Starter **沒有**(舊文件誤寫成 free-tier 免費,實測按下去會要求升級)
+- ❌ **Identity** = 2024 起 Netlify 公告 deprecated;新帳號可能看不到 Identity menu
+- ❌ **Team protection / SSO 🔒** = 鎖,要 Pro plan
+- ✅ **`_headers` HTTP Basic Auth** = free-tier 真正可用、真擋陌生人的方法(共用帳密,瀏覽器原生彈窗)
 
-**Defense-in-depth**(`netlify.toml` 已 ship):X-Robots-Tag noindex(搜尋引擎不收錄 URL)+ Referrer strict-origin + X-Frame SAMEORIGIN — SEO 層加固,**真實擋人**靠 Basic Password 那一層。
+**Defense-in-depth**(`netlify.toml` 已 ship):X-Robots-Tag noindex(搜尋引擎不收錄 URL)+ Referrer strict-origin + X-Frame SAMEORIGIN — SEO 層加固,**真實擋人**靠 `_headers` Basic Auth 那一層。
 
-**要更細權限**?三條路:
-- 升 **Netlify Pro** $19/mo → 解鎖 Team protection(per-account login + audit log)
+**要更細權限 / 美化密碼頁 / 只擋 preview**?
+- 升 **Netlify Pro** $20/mo → 解鎖 dashboard Password Protection + Team protection(per-account login + audit log)
 - 自架 **Cloudflare Access**(免費 50 user;setup 比 Netlify 複雜)
 - 公開 site,只防 SEO(`X-Robots-Tag noindex`)— 若 stakeholder 不介意 URL 知道就能看
 

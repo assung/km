@@ -26,10 +26,11 @@
 #    X-Robots-Tag noindex(Google/Bing 不收錄)+ Referrer / X-Frame headers
 #    只防 SEO 不防直接訪問,必須配第 2 道。
 #
-# 2️⃣ Real auth(user Netlify Dashboard 設,Default = Basic Password,2026-05-29 改 from Identity):
-#    Site settings → Access & security → Visitor access → Password Protection → Basic protection → 輸 password → Save
-#    為何不是 Identity:Netlify 2024 公告 deprecated;Team protection 鎖 Pro $19/mo
-#    Basic Password 是 free-tier 唯一真擋陌生人方法,Netlify edge 層擋(無需 client widget)
+# 2️⃣ Real auth(免費 `_headers` HTTP Basic Auth,2026-06 修正):
+#    跑 `npm run deploy:storybook`(讀 .env 的 NETLIFY_BASIC_AUTH_USER/PASSWORD)→ 注入
+#    storybook-static/_headers 的 `Basic-Auth:`,Netlify edge 層用瀏覽器帳密彈窗擋整站。
+#    ⚠️ 修正前一版錯誤:dashboard 的 Password Protection 其實是 **Pro $20/mo 付費**功能,
+#    free / Starter 沒有;free-tier 真正可用的是 `_headers` Basic Auth。Identity 已 2024 deprecated。
 #
 # 完整 step-by-step 詳 README「Storybook deploy」段。
 
