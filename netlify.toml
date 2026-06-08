@@ -41,3 +41,12 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "SAMEORIGIN"
+
+# ─── 免費密碼保護(Edge Function Basic Auth)──────────────────────────────────
+# free 方案不認 `_headers` Basic-Auth、dashboard password 又是 Pro 付費,故改用 edge
+# function 自己擋。帳密放 Netlify 環境變數 BASIC_AUTH_USER / BASIC_AUTH_PASSWORD
+# (dashboard 設,不進 repo;沒設 = 不擋)。實作見 netlify/edge-functions/basic-auth.ts。
+[[edge_functions]]
+  path = "/*"
+  function = "basic-auth"
+

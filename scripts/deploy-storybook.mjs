@@ -1,32 +1,30 @@
 #!/usr/bin/env node
-// scripts/deploy-storybook.mjs — build Storybook + (免費)密碼保護 + deploy 到 Netlify。
+// scripts/deploy-storybook.mjs — build Storybook + deploy 到 Netlify(含免費密碼保護)。
 //
-// 為何存在(2026-06 verified,修正舊文件「Basic Password 免費」的錯誤):
-//   Netlify *dashboard* 內建的 Password Protection 是 **Pro 方案($20/mo)付費功能**,
-//   free / Starter 方案沒有。free-tier 真正可用的密碼保護 = HTTP Basic Auth via `_headers` 檔。
-//   本 script 在 build 產物 storybook-static/ 注入 `_headers`,Netlify edge 層用瀏覽器原生
-//   帳密彈窗擋住整站。
+// 密碼保護方式(2026-06,實測修正):
+//   - ❌ `_headers` Basic-Auth → Netlify free 方案「不執行」(實測 curl 回 200)
+//   - ❌ dashboard Password Protection → Pro $20/mo 付費功能
+//   - ✅ **Edge Function**(netlify/edge-functions/basic-auth.ts)→ free 方案可用,本專案採用
 //
-// 安全:帳密從「環境變數」讀,只寫進 storybook-static/(已 gitignore)→ 永不進版控。
-//       本 repo 為 public,絕不可把帳密 commit。
+// 帳密設在「Netlify 環境變數」(dashboard → Site configuration → Environment variables):
+//   BASIC_AUTH_USER / BASIC_AUTH_PASSWORD     ← edge function 讀這兩個(沒設 = 站台公開)
+// 不寫進 repo、也不寫進 build 產物,最安全。
 //
-// 設定:把以下放進 .env(已 gitignore)或 export 到 shell —
-//   NETLIFY_BASIC_AUTH_USER=team
-//   NETLIFY_BASIC_AUTH_PASSWORD=your-shared-password
-//   NETLIFY_SITE_ID=xxxxxxxx-xxxx-...   # 你的 Netlify site id(Admin URL / `netlify status` 可查)
+// .env(本機,已 gitignore)只需要:
+//   NETLIFY_SITE_ID=xxxx   ← 要部署到哪個 site(沒設則用已 link 的 site)
 //
 // 用法:
-//   npm run deploy:storybook            # build + 注入 _headers + deploy --prod
-//   DRY=1 npm run deploy:storybook      # 只 build + 注入,不真的 deploy(本機檢查用)
+//   npm run deploy:storybook         # build + deploy --prod
+//   DRY=1 npm run deploy:storybook   # 只 build,不部署
 
 import { execSync } from 'node:child_process'
-import { writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-// 極簡 .env 載入(不引外部依賴;已存在的 process.env 優先)
+// 極簡 .env 載入(取 NETLIFY_SITE_ID;已存在的 process.env 優先)
 function loadDotEnv() {
   const f = join(ROOT, '.env')
   if (!existsSync(f)) return
@@ -37,38 +35,24 @@ function loadDotEnv() {
 }
 loadDotEnv()
 
-const user = process.env.NETLIFY_BASIC_AUTH_USER
-const pass = process.env.NETLIFY_BASIC_AUTH_PASSWORD
 const siteId = process.env.NETLIFY_SITE_ID
 const dryRun = process.env.DRY === '1'
-
 const run = (cmd) => execSync(cmd, { cwd: ROOT, stdio: 'inherit' })
 
-// ① Build
 console.log('① Build Storybook…')
 run('npm run build-storybook')
 
-// ② 注入 _headers Basic-Auth(整站密碼保護)
-const outDir = join(ROOT, 'storybook-static')
-if (user && pass) {
-  writeFileSync(join(outDir, '_headers'), `/*\n  Basic-Auth: ${user}:${pass}\n`)
-  console.log(`② 已注入 _headers Basic-Auth(user: ${user})—— 整站需輸入帳密`)
-} else {
-  console.warn('⚠️  未設 NETLIFY_BASIC_AUTH_USER / NETLIFY_BASIC_AUTH_PASSWORD')
-  console.warn('   → 這次將「公開」部署(無密碼保護)!要保護:在 .env 設這兩個變數後重跑。')
-}
-
-// ③ Deploy
 if (dryRun) {
-  console.log('③ DRY=1 → 跳過 deploy。產物在 storybook-static/(含 _headers,若有設帳密)。')
+  console.log('② DRY=1 → 跳過 deploy。產物在 storybook-static/。')
   process.exit(0)
 }
-console.log('③ Deploy 到 Netlify production…')
-console.log('   (若跳出「Select the project」monorepo 選單,選你的 app 即可 ——')
-console.log('    --dir 已是絕對路徑,選哪個都會上傳正確的 storybook-static。)')
-const siteFlag = siteId ? ` --site=${siteId}` : ''
-run(`npx netlify deploy --prod --dir="${outDir}"${siteFlag}`)
 
-console.log('\n✅ 完成。請打開 production URL 驗證:')
-console.log('   - 有設帳密 → 應先跳出瀏覽器帳密彈窗,輸入後才看到 Storybook')
-console.log('   - 若「沒」跳密碼框 → 代表 Netlify 對你帳號的 _headers Basic-Auth 行為有變,請改用 Pro 方案或回報。')
+console.log('② Deploy 到 Netlify production(含 edge function basic-auth)…')
+console.log('   (若跳出「Select the project」選單,選你的 app 即可。)')
+const siteFlag = siteId ? ` --site=${siteId}` : ''
+run(`npx netlify deploy --prod --dir="${join(ROOT, 'storybook-static')}"${siteFlag}`)
+
+console.log('\n✅ Deploy 完成。密碼保護由 edge function 負責,確認你已在 Netlify 設好環境變數:')
+console.log('   BASIC_AUTH_USER / BASIC_AUTH_PASSWORD')
+console.log('   (Site configuration → Environment variables。沒設 = 站台公開不擋。)')
+console.log('驗證:curl -sI <site-url> 應回 HTTP 401;瀏覽器無痕開應跳帳密彈窗。')

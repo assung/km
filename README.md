@@ -50,11 +50,13 @@ Storybook root config `.storybook/main.ts` 自動 glob `apps/**/*.stories.tsx`,*
 
 ```bash
 npm run setup:netlify       # 只做一次:CLI install + GitHub OAuth login + site 建
-cp .env.example .env        # 填 NETLIFY_BASIC_AUTH_USER / _PASSWORD / NETLIFY_SITE_ID
-npm run deploy:storybook    # build + 注入免費 _headers Basic Auth + deploy --prod
+# Netlify dashboard → Site configuration → Environment variables → 設
+#   BASIC_AUTH_USER / BASIC_AUTH_PASSWORD(帳密只存 Netlify 端,不進 repo)
+cp .env.example .env        # 填 NETLIFY_SITE_ID
+npm run deploy:storybook    # build + deploy(免費 edge function 密碼保護一起上)
 ```
 
-**為何用 `_headers` Basic Auth?**(2026-06 修正)Netlify *dashboard* 的 Password Protection 其實是 **Pro 方案($20/mo)付費**功能,free / Starter 沒有(舊文件誤寫成免費)。Identity 也已於 2024 deprecated。**free-tier 真正能擋陌生人的是 HTTP Basic Auth via `_headers`**——`npm run deploy:storybook` 會把 `.env` 裡的帳密注入 build 產物(已 gitignore,不進版控),Netlify edge 層用瀏覽器帳密彈窗擋整站。
+**為何用 Edge Function Basic Auth?**(2026-06 實測修正)在 free 方案踩過兩個雷:① dashboard 的 Password Protection 是 **Pro $20/mo 付費**功能;② `_headers` 的 Basic-Auth 在 free 方案**不被執行**(實測 curl 回 200)。**free 方案真正可用的是 Netlify Edge Function**(`netlify/edge-functions/basic-auth.ts`,跑你自己的擋人程式,免費含)。帳密放 Netlify 環境變數,edge function 讀它比對,不符回 401 跳帳密彈窗。Identity 也已於 2024 deprecated。
 
 ### Step 6 — Push main → 自動部署
 
@@ -150,8 +152,9 @@ Then plugin auto-enables (`.claude/settings.json` `defaultMode: "auto"`). You ge
 claude                                                         # ① 啟動 Claude Code
 # 內輸: /plugin marketplace add github:ajenchen/design-system    # ② 拿 DS 治理 plugin
 # 內輸: /plugin install design-system@qijenchen-ds                #    啟用 22 skills + 59 hooks
-npm run setup:netlify                                          # ③ Netlify OAuth + 印 dashboard URL
-# 開瀏覽器點 Visitor access → Basic protection → 輸 password → Save
+npm run setup:netlify                                          # ③ Netlify OAuth + 建 site
+# Netlify dashboard → Environment variables 設 BASIC_AUTH_USER / BASIC_AUTH_PASSWORD
+npm run deploy:storybook                                       # ④ build + deploy(免費 edge function 密碼保護)
 ```
 
 Deploy URL 在 push 後 hook `inject_deploy_url_after_push.sh` 自動 inject 進 Claude reply(`https://<branch>--<owner>-<repo>.netlify.app` 推導 + curl 200 verify + Storybook content sniff)。
@@ -163,22 +166,23 @@ Deploy URL 在 push 後 hook `inject_deploy_url_after_push.sh` 自動 inject 進
 2. Netlify 自動讀根目錄 `netlify.toml` → build `storybook-static` → deploy
 3. 每次 push main → Netlify auto rebuild。Per-branch preview 自動啟用。
 
-**Step 2 — 🔒 設密碼保護(免費 `_headers` Basic Auth)**:
+**Step 2 — 🔒 設密碼保護(免費 Edge Function Basic Auth)**:
 
-```bash
-cp .env.example .env        # 填 NETLIFY_BASIC_AUTH_USER / _PASSWORD / NETLIFY_SITE_ID
-npm run deploy:storybook    # build + 注入 _headers Basic Auth + deploy --prod
-```
+1. Netlify dashboard → Site configuration → **Environment variables** → 設 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`(帳密只存 Netlify 端,不進 repo)
+2. 部署:
+   ```bash
+   cp .env.example .env        # 填 NETLIFY_SITE_ID
+   npm run deploy:storybook    # build + deploy(edge function 一起上)
+   ```
+3. 打開 site URL → 應跳出瀏覽器帳密彈窗 → 把 **site URL + 帳密**私訊給 stakeholder(team Slack / DM)
 
-部署後打開 site URL → 應跳出瀏覽器帳密彈窗 → 把 **site URL + 帳密**私訊給 stakeholder(team Slack / DM)。帳密只寫進 build 產物 `storybook-static/_headers`(已 gitignore),**不進版控**。
+**為何用 Edge Function?**(2026-06 實測修正,踩過兩個雷):
+- ❌ **Dashboard Password Protection** = **Pro 方案 $20/mo 付費**功能,free / Starter **沒有**(舊文件誤寫成免費,按下去會要升級)
+- ❌ **`_headers` Basic-Auth** = free 方案**不執行**(實測:`_headers` 被當設定吃掉但 curl 仍回 200,完全不擋)
+- ❌ **Identity** = 2024 起 Netlify deprecated
+- ✅ **Edge Function**(`netlify/edge-functions/basic-auth.ts`)= free 方案真正可用(跑自己的程式比對帳密,回 401 跳彈窗)
 
-**為何用 `_headers` Basic Auth?**(2026-06 修正,前一版有誤):
-- ❌ **Dashboard Password Protection** = 其實是 **Pro 方案 $20/mo 付費**功能,free / Starter **沒有**(舊文件誤寫成 free-tier 免費,實測按下去會要求升級)
-- ❌ **Identity** = 2024 起 Netlify 公告 deprecated;新帳號可能看不到 Identity menu
-- ❌ **Team protection / SSO 🔒** = 鎖,要 Pro plan
-- ✅ **`_headers` HTTP Basic Auth** = free-tier 真正可用、真擋陌生人的方法(共用帳密,瀏覽器原生彈窗)
-
-**Defense-in-depth**(`netlify.toml` 已 ship):X-Robots-Tag noindex(搜尋引擎不收錄 URL)+ Referrer strict-origin + X-Frame SAMEORIGIN — SEO 層加固,**真實擋人**靠 `_headers` Basic Auth 那一層。
+**Defense-in-depth**(`netlify.toml` 已 ship):X-Robots-Tag noindex(搜尋引擎不收錄 URL)+ Referrer strict-origin + X-Frame SAMEORIGIN — SEO 層加固,**真實擋人**靠 edge function 那一層。
 
 **要更細權限 / 美化密碼頁 / 只擋 preview**?
 - 升 **Netlify Pro** $20/mo → 解鎖 dashboard Password Protection + Team protection(per-account login + audit log)

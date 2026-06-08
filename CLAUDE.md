@@ -66,7 +66,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 | 1 | `npm install` | 拉 `@qijenchen/design-system` + `@qijenchen/storybook-config` npm deps + DS canonical 隨 npm 落地 |
 | 2 | `/plugin marketplace add github:ajenchen/design-system` | 拿 DS governance plugin(22 skills / 59 hooks 自動下載) |
 | 3 | `/plugin install design-system@qijenchen-ds` | 啟動 plugin |
-| 4 | `npm run setup:netlify` 然後 `npm run deploy:storybook` | setup 建 site;deploy build + 注入免費 `_headers` Basic Auth + 上線。密碼保護走 `_headers`(free-tier 真正可用;dashboard Password Protection 是 Pro $20/mo 付費,2026-06 修正)|
+| 4 | `npm run setup:netlify` → Netlify 設環境變數 `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD` → `npm run deploy:storybook` | 免費密碼保護走 **Edge Function**(`netlify/edge-functions/basic-auth.ts`)。`_headers` Basic-Auth 在 free 不執行、dashboard password 是 Pro $20/mo 付費(2026-06 實測修正)|
 | 5 | `npm run create-app <new-app-name>`(若需新 product app) | copy `template/` → 新 app folder |
 | 6 | `npm run storybook` 本地 verify | 確認 DS components 視覺正確 |
 | 7 | Push main → Netlify auto-deploy + Storybook auto-rebuild | done |
@@ -97,26 +97,33 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 ## 📚 Storybook 用途分工
 
 - **DS repo Storybook**(<https://ajenchen-design-system.netlify.app/>)= DS library 元件 reference docs(public 或 password protected by DS owner)
-- **本 repo Storybook**(Netlify deploy,`_headers` Basic Auth protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
+- **本 repo Storybook**(Netlify deploy,Edge Function Basic Auth protected)= **真實 product UI demo**(PM / designer / QA 看業務情境)
 - Stories 寫 PRODUCT scenarios(不是 DS element trait grid)— DS trait grid 是 DS repo 責任
 
 ---
 
-## 🔒 Access control — 免費 `_headers` Basic Auth(2026-06 修正)
+## 🔒 Access control — 免費 Edge Function Basic Auth(2026-06 實測修正)
 
-**Default = HTTP Basic Auth via `_headers`(free-tier 真正可用,共用帳密)。**
+**Default = Netlify Edge Function 自寫 Basic Auth(free 方案可用,共用帳密)。**
 
-> ⚠️ **2026-06 修正**:舊版寫「Netlify Basic Password 是 free-tier 唯一可用」是**錯的**。Netlify *dashboard* 內建的 Password Protection 其實是 **Pro 方案($20/mo,2026/4 起固定價)付費功能**,free / Starter 沒有。free-tier 真正能擋陌生人的是 `_headers` 的 HTTP Basic Auth。Identity 則已於 2024 deprecated。
+> ⚠️ **2026-06 實測修正(踩過兩個雷)**:
+> 1. dashboard **Password Protection** 是 **Pro $20/mo 付費**功能,free / Starter 沒有。
+> 2. `_headers` 的 **Basic-Auth** 在 free 方案**不被執行**(實測:`_headers` 被當設定吃掉但 curl 仍回 200)。
+> 3. ✅ free 方案真正可用的是 **Edge Function**(跑你自己的程式,免費含)→ `netlify/edge-functions/basic-auth.ts`。
+> Identity 已於 2024 deprecated。
 
-**設定流程**(一鍵):
+**設定流程**:
 1. `npm run setup:netlify` — CLI install + login + site 建(只做一次)
-2. copy `.env.example` → `.env`,填 `NETLIFY_BASIC_AUTH_USER` / `NETLIFY_BASIC_AUTH_PASSWORD` / `NETLIFY_SITE_ID`
-3. `npm run deploy:storybook` — build + 注入 `_headers` Basic-Auth + deploy --prod
-4. 把 site URL + 帳密私訊 stakeholder
+2. Netlify dashboard → Site configuration → **Environment variables** → 設 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`
+3. copy `.env.example` → `.env`,填 `NETLIFY_SITE_ID`
+4. `npm run deploy:storybook` — build + deploy(edge function 一起部署)
+5. 把 site URL + 帳密私訊 stakeholder
 
-**機制**:`scripts/deploy-storybook.mjs` 把帳密寫進 build 產物 `storybook-static/_headers`(已 gitignore,**永不進版控**;本 repo public,帳密不可 commit);Netlify edge 層用瀏覽器原生帳密彈窗擋整站。`netlify.toml` 的 `X-Robots-Tag noindex` 只防搜尋引擎,不防直接訪問 → 真正擋人靠這組帳密。
+**機制**:`netlify/edge-functions/basic-auth.ts` 攔截所有 request,比對 `Authorization` header 與 Netlify 環境變數 `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`,不符就回 401 觸發瀏覽器帳密彈窗。帳密只存在 Netlify 端(環境變數),**不進 repo / build 產物**。`netlify.toml` 的 `X-Robots-Tag noindex` 只防搜尋引擎,真正擋人靠這個 edge function。
 
-**若要 dashboard 那種美化密碼頁 / 只擋 preview 放行 production / 團隊 SSO** → 才需升 **Pro $20/mo**(Site → Access & security → Visitor access → Password protection)。free-tier 用 `_headers` 即可。
+**若要 dashboard 美化密碼頁 / 只擋 preview / 團隊 SSO** → 才需升 **Pro $20/mo**。free 方案用 edge function 即可。
+
+**若要 dashboard 那種美化密碼頁 / 只擋 preview 放行 production / 團隊 SSO** → 才需升 **Pro $20/mo**(Site → Access & security → Visitor access → Password protection)。free-tier 用 edge function 即可。
 
 ### 🆘 Claude 引導使用者 — Netlify onboarding(user 不一定知道 Netlify)
 
@@ -124,7 +131,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 
 1. **解釋 Netlify 是什麼**(一句話):「Netlify 是免費 deploy 平台(類似 Vercel),用來自動跑 Storybook + 給 team 看內部 product UI。Free tier 100GB bandwidth / 0 maintenance」
 2. **沒帳號?GitHub 1-click 自動建**:「fork 本 repo 必有 GitHub 帳號 → 跑 `npm run setup:netlify` 會開瀏覽器 OAuth → 點『Continue with GitHub』授權 → Netlify 自動建帳號(<5 秒)」
-3. **設密碼(免費)**:「在 `.env` 填 `NETLIFY_BASIC_AUTH_USER` / `NETLIFY_BASIC_AUTH_PASSWORD`,跑 `npm run deploy:storybook` 就會把 `_headers` Basic Auth 注入並部署,整站需帳密。⚠️ dashboard 的 Password Protection 是 Pro $20/mo 付費功能,free 方案用 `_headers`(2026-06 修正)。」
+3. **設密碼(免費)**:「在 Netlify dashboard → Site configuration → Environment variables 設 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`,跑 `npm run deploy:storybook` 部署,edge function 就會擋整站。⚠️ dashboard 的 Password Protection 是 Pro $20/mo 付費;`_headers` Basic-Auth 在 free 不執行(2026-06 實測)。」
 4. **防 SEO** 已自動:「`netlify.toml` 已 ship `X-Robots-Tag noindex`,Google 不收錄 URL。但**真擋陌生人靠 password**,SEO header 只防搜尋引擎不防直接訪問」
 5. **驗證 deploy 成功**:「push main 後 2-3 min,Netlify Dashboard `Deploys` tab 變綠勾 = OK。Site URL = `https://<site-name>.netlify.app`」
 6. **GitHub CLI 未 login?**「Setup script Step 0 偵測 `gh auth status`;沒 login 建議先跑 `gh auth login`(瀏覽器 OAuth,1 分鐘)」
@@ -137,7 +144,7 @@ Fork 本 repo 後,user 用 Claude 開啟,Claude **必依以下順序**做 painle
 | 1 | Plugin install slash command | ❌ Architecture | Postinstall warning 印 copy-paste,30 秒 |
 | 2 | `netlify login` OAuth | ❌ OAuth security | 瀏覽器 click「Authorize」1 次 |
 | 3 | `netlify init` site 建立 | ✅ **已自動**:`sites:create` + `link`,site name = `<gh-user>-<repo>` |
-| 4 | **設 Basic Password** | ❌ **Netlify CLI 沒提供 password API**(2026-05-29 verified) | Script 印 dashboard URL,user 點 2 radio button + 輸 password + Save(30 秒) |
+| 4 | **設密碼帳密** | ⚠️ 半自動 | 在 Netlify dashboard → Environment variables 設 `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`(edge function 讀,30 秒) |
 | 5 | 分享 password 給 stakeholder | ❌ 沒辦法自動 | Team chat / Slack DM 私訊 |
 | 6 | Push main 觸發 production | ❌ **設計上 user gate**(Git solo-work canonical) | 不修 |
 
